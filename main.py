@@ -10,15 +10,17 @@ load_dotenv()
 
 def run_api():
     """Run the FastAPI server."""
+    import os
     import uvicorn
     from src.interface.api import app
     from src.utils import get_settings
 
     settings = get_settings()
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(
         app,
         host="0.0.0.0",
-        port=8000,
+        port=port,
         log_level=settings.log_level.lower()
     )
 

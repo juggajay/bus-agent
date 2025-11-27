@@ -1,0 +1,91 @@
+# Core thesis configuration
+
+thesis_elements:
+  ai_leverage:
+    name: "AI Leverage"
+    description: >
+      Does this opportunity allow a solo operator or small team to do what
+      previously required 20+ people? Is AI a genuine force multiplier here
+      or just a feature?
+    weight: 1.0
+    indicators:
+      - automation of manual processes
+      - reduction in required headcount
+      - AI-native workflows
+      - LLM integration opportunities
+
+  trust_scarcity:
+    name: "Trust Scarcity"
+    description: >
+      In a world where everything can be faked, does this opportunity leverage
+      verified credentials, provable data, or authentic expertise as a moat?
+    weight: 1.0
+    indicators:
+      - verification requirements
+      - credential importance
+      - authenticity premium
+      - trust as competitive advantage
+
+  physical_digital:
+    name: "Physical-Digital Intersection"
+    description: >
+      Is this where atoms meet bits? The underexplored space where real-world
+      friction meets software solutions.
+    weight: 1.0
+    indicators:
+      - real-world integration
+      - hardware-software bridge
+      - physical world data
+      - on-the-ground operations
+
+  incumbent_decay:
+    name: "Incumbent Decay"
+    description: >
+      Are existing players slow, bloated, protected by inertia, or failing to
+      adapt? Is there a window to move fast?
+    weight: 1.0
+    indicators:
+      - legacy technology
+      - slow response times
+      - customer complaints
+      - regulatory protection eroding
+
+  speed_advantage:
+    name: "Speed Advantage"
+    description: >
+      Can this be executed quickly? Is first-to-iterate-well still a viable
+      strategy here?
+    weight: 1.0
+    indicators:
+      - low barrier to entry
+      - rapid iteration possible
+      - market not yet consolidated
+      - network effects buildable
+
+  execution_fit:
+    name: "Execution Edge Fit"
+    description: >
+      How well does this match the operator's specific strengths:
+      construction/trades knowledge, technical ability, solo operator model,
+      Australia/SEA geography?
+    weight: 1.2
+    indicators:
+      - construction/trades relevance
+      - technical implementation path
+      - solo operation viable
+      - AU/SEA market opportunity
+
+operator_profile:
+  background: "Solo entrepreneur with construction/carpentry background"
+  technical_ability: "Can build software"
+  geography: "Based in Australia with knowledge of SEA markets"
+  preferences:
+    - "Opportunities with data moats"
+    - "Regulatory advantages"
+    - "Quick execution"
+    - "Minimal team or capital requirements"
+  strengths:
+    - "Construction/trades domain knowledge"
+    - "Technical implementation ability"
+    - "Solo operator efficiency"
+    - "Australia/SEA market understanding"

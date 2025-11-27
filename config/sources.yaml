@@ -1,0 +1,53 @@
+# Data source configuration
+
+weekly_collection:
+  sources:
+    google_trends:
+      enabled: true
+      regions: [US, GB, AU, CA, NZ]
+      categories: [all, business, technology, finance]
+
+    github_trending:
+      enabled: true
+      languages: [all, python, javascript, typescript, rust, go]
+      time_ranges: [daily, weekly, monthly]
+
+    hacker_news:
+      enabled: true
+      types: [top, show_hn, ask_hn, best]
+
+    product_hunt:
+      enabled: true
+
+    reddit:
+      enabled: true
+      subreddits:
+        - smallbusiness
+        - entrepreneur
+        - startups
+        - australia
+        - ausfinance
+        - construction
+        - contractors
+        - trades
+        - SaaS
+        - webdev
+        - programming
+        - LocalLLaMA
+        - MachineLearning
+
+monthly_collection:
+  sources:
+    austender:
+      enabled: false  # Requires implementation
+      categories: [technology, construction, professional_services]
+
+    crunchbase:
+      enabled: false  # Requires API key
+      stages: [seed, series_a]
+      regions: [US, GB, AU]
+
+anomaly_detection:
+  velocity_threshold: 0.8
+  lookback_days: 7
+  check_frequency: daily

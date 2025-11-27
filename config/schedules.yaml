@@ -1,0 +1,36 @@
+# Scheduling configuration
+
+timezone: "Australia/Sydney"
+
+schedules:
+  weekly_collection:
+    cron: "0 6 * * 1"  # Monday 6 AM
+    description: "Collect from all weekly sources"
+
+  monthly_collection:
+    cron: "0 6 1 * *"  # 1st of month 6 AM
+    description: "Collect from monthly sources (regulatory, funding)"
+
+  daily_processing:
+    cron: "0 7 * * *"  # Daily 7 AM
+    description: "Process any unprocessed signals"
+
+  weekly_analysis:
+    cron: "0 8 * * 1"  # Monday 8 AM
+    description: "Run pattern detection and opportunity generation"
+
+  weekly_digest:
+    cron: "0 9 * * 1"  # Monday 9 AM
+    description: "Generate and send weekly digest"
+
+  monthly_digest:
+    cron: "0 9 1 * *"  # 1st of month 9 AM
+    description: "Generate and send monthly digest"
+
+  daily_anomaly_check:
+    cron: "0 10 * * *"  # Daily 10 AM
+    description: "Check for anomalies and send alerts"
+
+  quarterly_synthesis:
+    cron: "0 8 15 1,4,7,10 *"  # 15th of Jan/Apr/Jul/Oct 8 AM
+    description: "Run quarterly synthesis and review"

@@ -120,6 +120,22 @@ async def get_opportunities(
     return {"opportunities": [o.model_dump() for o in opportunities], "count": len(opportunities)}
 
 
+@app.get("/opportunities/{opportunity_id}")
+async def get_opportunity(opportunity_id: str):
+    """Get a single opportunity by ID."""
+    db = get_database()
+    try:
+        opportunities = await db.get_opportunities()
+        for opp in opportunities:
+            if str(opp.id) == opportunity_id:
+                return opp.model_dump()
+        raise HTTPException(status_code=404, detail="Opportunity not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.patch("/opportunities/{opportunity_id}")
 async def update_opportunity(opportunity_id: str, update: OpportunityUpdate):
     """Update an opportunity's status or notes."""

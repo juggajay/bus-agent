@@ -187,7 +187,7 @@ class OpportunityCreate(BaseModel):
     industries: List[str] = []
     geographies: List[str] = []
     thesis_scores: Dict[str, Any] = {}
-    overall_score: Optional[int] = None
+    overall_score: Optional[float] = None  # Changed to float for v2.0 LLM scoring
     # Verdict
     verdict: Optional[str] = None  # BUILD NOW, EXPLORE, MONITOR, PASS
     first_steps: List[str] = []

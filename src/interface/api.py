@@ -372,6 +372,82 @@ async def run_full_pipeline():
     return results
 
 
+@app.post("/pipeline/full-refresh")
+async def run_full_refresh():
+    """
+    Full refresh for Solo SaaS Finder v2.0.
+    Clears processed data and reprocesses everything with new scoring.
+    WARNING: This is a destructive operation that clears existing opportunities.
+    """
+    import asyncio
+    db = get_database()
+    results = {"step": "starting", "details": {}}
+
+    # Step 1: Clear existing data
+    try:
+        db.client.table("opportunities").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+        db.client.table("pattern_matches").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+        db.client.table("processed_signals").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+        results["details"]["cleared"] = True
+    except Exception as e:
+        results["details"]["clear_error"] = str(e)
+
+    # Step 2: Get raw signals
+    raw_signals = await db.get_recent_signals(days=90)
+    results["details"]["raw_signals"] = len(raw_signals)
+
+    if not raw_signals:
+        results["step"] = "no_signals"
+        return results
+
+    # Step 3: Process signals with v2.0 scoring
+    pipeline = get_pipeline()
+    processed_count = 0
+    disqualified_count = 0
+
+    for signal in raw_signals:
+        try:
+            result = await pipeline.process_signal(signal)
+            if result:
+                processed_count += 1
+                if getattr(result, 'is_disqualified', False):
+                    disqualified_count += 1
+        except Exception:
+            pass
+        await asyncio.sleep(0.3)
+
+    results["details"]["processed"] = processed_count
+    results["details"]["disqualified"] = disqualified_count
+
+    # Step 4: Detect patterns
+    detector = get_pattern_detector()
+    patterns = await detector.detect_all(days=90)
+    results["details"]["patterns_detected"] = len(patterns)
+
+    # Step 5: Generate opportunities
+    generator = get_opportunity_generator()
+    stored_patterns = await db.get_patterns(min_score=0.4)
+    signals = await db.get_processed_signals(days=90)
+    valid_signals = [s for s in signals if not getattr(s, 'is_disqualified', False)]
+
+    opportunities_generated = 0
+    for pattern in stored_patterns:
+        try:
+            related = [s for s in valid_signals if s.id in (pattern.signal_ids or [])]
+            if related:
+                opp = await generator.generate_from_pattern(pattern, related)
+                if opp:
+                    opportunities_generated += 1
+        except Exception:
+            pass
+        await asyncio.sleep(0.5)
+
+    results["details"]["opportunities_generated"] = opportunities_generated
+    results["step"] = "completed"
+
+    return results
+
+
 # Stats endpoint - Updated for Solo SaaS Finder v2.0
 @app.get("/stats")
 async def get_stats():

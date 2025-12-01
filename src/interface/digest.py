@@ -34,11 +34,20 @@ class DigestGenerator:
             cutoff = datetime.utcnow() - timedelta(days=7)
 
             def parse_datetime(dt):
+                if dt is None:
+                    return datetime.utcnow()
                 if isinstance(dt, datetime):
+                    # Make naive if timezone-aware for comparison
+                    if dt.tzinfo is not None:
+                        return dt.replace(tzinfo=None)
                     return dt
                 if isinstance(dt, str):
                     try:
-                        return datetime.fromisoformat(dt.replace('Z', '+00:00').replace('+00:00', ''))
+                        parsed = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                        # Make naive for comparison
+                        if parsed.tzinfo is not None:
+                            return parsed.replace(tzinfo=None)
+                        return parsed
                     except:
                         return datetime.utcnow()
                 return datetime.utcnow()
@@ -105,11 +114,20 @@ class DigestGenerator:
             cutoff = datetime.utcnow() - timedelta(days=30)
 
             def parse_datetime(dt):
+                if dt is None:
+                    return datetime.utcnow()
                 if isinstance(dt, datetime):
+                    # Make naive if timezone-aware for comparison
+                    if dt.tzinfo is not None:
+                        return dt.replace(tzinfo=None)
                     return dt
                 if isinstance(dt, str):
                     try:
-                        return datetime.fromisoformat(dt.replace('Z', '+00:00').replace('+00:00', ''))
+                        parsed = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                        # Make naive for comparison
+                        if parsed.tzinfo is not None:
+                            return parsed.replace(tzinfo=None)
+                        return parsed
                     except:
                         return datetime.utcnow()
                 return datetime.utcnow()

@@ -329,8 +329,11 @@ async def run_pattern_detection(days: int = Query(default=30, ge=1, le=90)):
 
 
 @app.post("/pipeline/generate-opportunities")
-async def run_opportunity_generation(min_score: float = Query(default=0.5, ge=0, le=1)):
-    """Generate opportunities from patterns."""
+async def run_opportunity_generation(
+    min_score: float = Query(default=0.5, ge=0, le=1),
+    limit: int = Query(default=5, ge=1, le=50, description="Max patterns to process (default 5 to avoid timeout)")
+):
+    """Generate opportunities from patterns. Process limited patterns at a time to avoid timeout."""
     db = get_database()
     generator = get_opportunity_generator()
     generator.clear_errors()  # Clear previous errors
@@ -338,20 +341,25 @@ async def run_opportunity_generation(min_score: float = Query(default=0.5, ge=0,
     patterns = await db.get_patterns(status="new", min_score=min_score)
     signals = await db.get_processed_signals(days=90)  # Extended to 90 days to match pattern detection
 
+    # Limit patterns to process
+    patterns_to_process = patterns[:limit]
+
     # Debug info
     debug_info = {
         "patterns_count": len(patterns),
+        "patterns_processing": len(patterns_to_process),
         "signals_count": len(signals),
         "high_score_patterns": len([p for p in patterns if p.opportunity_score >= min_score])
     }
 
-    opportunities = await generator.generate_from_patterns(patterns, signals, min_score)
+    opportunities = await generator.generate_from_patterns(patterns_to_process, signals, min_score)
 
     # Get any errors that occurred
     errors = generator.get_errors()
 
     return {
         "opportunities_generated": len(opportunities),
+        "patterns_remaining": len(patterns) - len(patterns_to_process),
         "debug": debug_info,
         "errors": errors[:10] if errors else []  # Return up to 10 errors
     }

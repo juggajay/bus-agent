@@ -287,35 +287,46 @@ class Database:
     # Opportunities - Updated for Solo SaaS Finder v2.0
     def _parse_opportunity_data(self, data: dict) -> dict:
         """Parse returned opportunity data from Supabase - Updated for v2.0"""
-        if isinstance(data.get("pattern_ids"), str):
-            data["pattern_ids"] = json.loads(data["pattern_ids"])
-        if isinstance(data.get("signal_ids"), str):
-            data["signal_ids"] = json.loads(data["signal_ids"])
-        if isinstance(data.get("thesis_scores"), str):
-            data["thesis_scores"] = json.loads(data["thesis_scores"])
-        if isinstance(data.get("industries"), str):
-            data["industries"] = json.loads(data["industries"])
-        if isinstance(data.get("geographies"), str):
-            data["geographies"] = json.loads(data["geographies"])
-        if isinstance(data.get("existing_players"), str):
-            data["existing_players"] = json.loads(data["existing_players"])
-        if isinstance(data.get("key_requirements"), str):
-            data["key_requirements"] = json.loads(data["key_requirements"])
-        if isinstance(data.get("potential_moats"), str):
-            data["potential_moats"] = json.loads(data["potential_moats"])
-        if isinstance(data.get("risks"), str):
-            data["risks"] = json.loads(data["risks"])
-        # New v2.0 fields
-        if isinstance(data.get("core_features"), str):
-            data["core_features"] = json.loads(data["core_features"])
-        if isinstance(data.get("competitors"), str):
-            data["competitors"] = json.loads(data["competitors"])
-        if isinstance(data.get("technical_challenges"), str):
-            data["technical_challenges"] = json.loads(data["technical_challenges"])
-        if isinstance(data.get("customer_channels"), str):
-            data["customer_channels"] = json.loads(data["customer_channels"])
-        if isinstance(data.get("first_steps"), str):
-            data["first_steps"] = json.loads(data["first_steps"])
+        # Helper to parse JSON or default to empty list
+        def parse_list_field(field_name: str) -> list:
+            val = data.get(field_name)
+            if val is None:
+                return []
+            if isinstance(val, str):
+                return json.loads(val)
+            if isinstance(val, list):
+                return val
+            return []
+
+        # Helper to parse JSON or default to empty dict
+        def parse_dict_field(field_name: str) -> dict:
+            val = data.get(field_name)
+            if val is None:
+                return {}
+            if isinstance(val, str):
+                return json.loads(val)
+            if isinstance(val, dict):
+                return val
+            return {}
+
+        # Parse list fields with defaults for NULL values
+        data["pattern_ids"] = parse_list_field("pattern_ids")
+        data["signal_ids"] = parse_list_field("signal_ids")
+        data["industries"] = parse_list_field("industries")
+        data["geographies"] = parse_list_field("geographies")
+        data["existing_players"] = parse_list_field("existing_players")
+        data["key_requirements"] = parse_list_field("key_requirements")
+        data["potential_moats"] = parse_list_field("potential_moats")
+        data["risks"] = parse_list_field("risks")
+        # New v2.0 list fields
+        data["core_features"] = parse_list_field("core_features")
+        data["competitors"] = parse_list_field("competitors")
+        data["technical_challenges"] = parse_list_field("technical_challenges")
+        data["customer_channels"] = parse_list_field("customer_channels")
+        data["first_steps"] = parse_list_field("first_steps")
+        # Dict field
+        data["thesis_scores"] = parse_dict_field("thesis_scores")
+
         return data
 
     async def insert_opportunity(self, opportunity: OpportunityCreate) -> Opportunity:

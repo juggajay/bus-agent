@@ -77,7 +77,7 @@ class GapDetector:
 
         patterns = []
         for cluster in complaint_clusters:
-            if len(cluster) < 2:
+            if len(cluster) < 1:  # Allow single complaints to form gaps
                 continue
 
             # Check if there's builder activity addressing this

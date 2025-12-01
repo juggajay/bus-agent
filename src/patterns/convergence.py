@@ -52,7 +52,7 @@ class ConvergenceDetector:
         self,
         signals: List[ProcessedSignal],
         min_signals: int = 3,
-        similarity_threshold: float = 0.75
+        similarity_threshold: float = 0.65
     ) -> List[PatternMatchCreate]:
         """
         Detect convergence patterns in a list of signals.

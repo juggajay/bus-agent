@@ -20,7 +20,7 @@ class VelocitySpikeDetector:
     async def detect(
         self,
         signals: List[ProcessedSignal],
-        threshold: float = 0.8
+        threshold: float = 0.5
     ) -> List[PatternMatchCreate]:
         """
         Detect velocity spike patterns.

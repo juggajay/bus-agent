@@ -25,6 +25,8 @@ class OpportunityGenerator:
         self.client = AsyncAnthropic(api_key=settings.anthropic_api_key)
         self.rate_limiter = get_rate_limiter("anthropic")
         self.db = get_database()
+        self._last_error = None
+        self._errors = []
 
     async def generate_from_pattern(
         self,
@@ -186,10 +188,12 @@ class OpportunityGenerator:
             return opportunity
 
         except json.JSONDecodeError as e:
-            logger.error("Failed to parse opportunity response", error=str(e))
+            logger.error("Failed to parse opportunity response", error=str(e), response_text=response_text[:500] if 'response_text' in locals() else "N/A")
+            self._last_error = f"JSON parse error: {str(e)}"
             return None
         except Exception as e:
-            logger.error("Opportunity generation failed", error=str(e))
+            logger.error("Opportunity generation failed", error=str(e), error_type=type(e).__name__)
+            self._last_error = f"{type(e).__name__}: {str(e)}"
             return None
 
     async def generate_from_patterns(
@@ -251,9 +255,19 @@ class OpportunityGenerator:
                 opportunities.append(opportunity)
                 logger.info(f"Generated opportunity: {opportunity.title}")
             else:
-                logger.warning(f"Failed to generate opportunity for pattern {pattern.id}")
+                error_msg = self._last_error or "Unknown error"
+                logger.warning(f"Failed to generate opportunity for pattern {pattern.id}: {error_msg}")
+                self._errors.append({"pattern_id": str(pattern.id), "error": error_msg})
 
         return opportunities
+
+    def get_errors(self) -> list:
+        """Get list of errors from last generation run."""
+        return self._errors
+
+    def clear_errors(self) -> None:
+        """Clear error list."""
+        self._errors = []
 
     def _extract_industries(self, signals: List[ProcessedSignal]) -> List[str]:
         """Extract unique industries from signals."""

@@ -333,6 +333,7 @@ async def run_opportunity_generation(min_score: float = Query(default=0.5, ge=0,
     """Generate opportunities from patterns."""
     db = get_database()
     generator = get_opportunity_generator()
+    generator.clear_errors()  # Clear previous errors
 
     patterns = await db.get_patterns(status="new", min_score=min_score)
     signals = await db.get_processed_signals(days=90)  # Extended to 90 days to match pattern detection
@@ -345,9 +346,14 @@ async def run_opportunity_generation(min_score: float = Query(default=0.5, ge=0,
     }
 
     opportunities = await generator.generate_from_patterns(patterns, signals, min_score)
+
+    # Get any errors that occurred
+    errors = generator.get_errors()
+
     return {
         "opportunities_generated": len(opportunities),
-        "debug": debug_info
+        "debug": debug_info,
+        "errors": errors[:10] if errors else []  # Return up to 10 errors
     }
 
 

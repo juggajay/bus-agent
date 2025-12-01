@@ -1,4 +1,4 @@
-"""FastAPI web interface."""
+"""FastAPI web interface - Solo SaaS Finder v2.0"""
 
 from typing import List, Optional
 from uuid import UUID
@@ -18,9 +18,9 @@ from .digest import get_digest_generator
 from .alerts import get_alert_system
 
 app = FastAPI(
-    title="Opportunity Intelligence Agent",
-    description="Automated business opportunity discovery system",
-    version="1.0.0"
+    title="Solo SaaS Finder",
+    description="Automated SaaS and directory business opportunity discovery system",
+    version="2.0.0"
 )
 
 # Add CORS middleware
@@ -58,7 +58,12 @@ class PatternUpdate(BaseModel):
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    return {
+        "status": "healthy",
+        "version": "2.0.0",
+        "name": "Solo SaaS Finder",
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 
 # Signals endpoints
@@ -66,7 +71,8 @@ async def health_check():
 async def get_signals(
     days: int = Query(default=7, ge=1, le=90),
     signal_type: Optional[str] = None,
-    min_thesis_score: Optional[int] = Query(default=None, ge=1, le=10)
+    min_thesis_score: Optional[int] = Query(default=None, ge=1, le=10),
+    exclude_disqualified: bool = Query(default=True)
 ):
     """Get processed signals with optional filters."""
     db = get_database()
@@ -75,7 +81,32 @@ async def get_signals(
         signal_type=signal_type,
         min_thesis_score=min_thesis_score
     )
+
+    # Filter out disqualified signals if requested
+    if exclude_disqualified:
+        signals = [s for s in signals if not getattr(s, 'is_disqualified', False)]
+
     return {"signals": [s.model_dump() for s in signals], "count": len(signals)}
+
+
+@app.get("/signals/demand")
+async def get_demand_signals(
+    days: int = Query(default=7, ge=1, le=90),
+    min_demand_score: Optional[int] = Query(default=7, ge=1, le=10)
+):
+    """Get signals with high demand evidence scores."""
+    db = get_database()
+    signals = await db.get_processed_signals(days=days)
+
+    # Filter for demand signals with high scores
+    demand_signals = [
+        s for s in signals
+        if not getattr(s, 'is_disqualified', False)
+        and s.thesis_scores
+        and getattr(s.thesis_scores, 'demand_evidence', 0) >= min_demand_score
+    ]
+
+    return {"signals": [s.model_dump() for s in demand_signals], "count": len(demand_signals)}
 
 
 # Patterns endpoints
@@ -109,7 +140,9 @@ async def update_pattern(pattern_id: str, update: PatternUpdate):
 @app.get("/opportunities")
 async def get_opportunities(
     status: Optional[str] = None,
-    timing_stage: Optional[str] = None
+    timing_stage: Optional[str] = None,
+    verdict: Optional[str] = None,
+    opportunity_type: Optional[str] = None
 ):
     """Get opportunities with optional filters."""
     db = get_database()
@@ -117,7 +150,23 @@ async def get_opportunities(
         status=status,
         timing_stage=timing_stage
     )
+
+    # Additional filtering
+    if verdict:
+        opportunities = [o for o in opportunities if getattr(o, 'verdict', None) == verdict]
+    if opportunity_type:
+        opportunities = [o for o in opportunities if o.opportunity_type == opportunity_type]
+
     return {"opportunities": [o.model_dump() for o in opportunities], "count": len(opportunities)}
+
+
+@app.get("/opportunities/build-now")
+async def get_build_now_opportunities():
+    """Get all opportunities with BUILD NOW verdict."""
+    db = get_database()
+    opportunities = await db.get_opportunities()
+    build_now = [o for o in opportunities if getattr(o, 'verdict', None) == "BUILD NOW"]
+    return {"opportunities": [o.model_dump() for o in build_now], "count": len(build_now)}
 
 
 @app.get("/opportunities/{opportunity_id}")
@@ -182,11 +231,19 @@ async def chat_about_opportunity(opportunity_id: str, request: ChatRequest):
     return {"response": response}
 
 
-@app.post("/chat/thesis/{thesis_element}")
-async def explore_thesis(thesis_element: str):
-    """Explore signals related to a thesis element."""
+@app.post("/chat/factor/{factor}")
+async def explore_scoring_factor(factor: str):
+    """Explore signals related to a scoring factor (Solo SaaS Finder v2.0)."""
     chat_interface = get_chat_interface()
-    response = await chat_interface.explore_thesis(thesis_element)
+    response = await chat_interface.explore_scoring_factor(factor)
+    return {"response": response}
+
+
+@app.get("/chat/recommendations")
+async def get_build_recommendations():
+    """Get recommendations for what to build based on current data."""
+    chat_interface = get_chat_interface()
+    response = await chat_interface.get_build_recommendations()
     return {"response": response}
 
 
@@ -315,46 +372,144 @@ async def run_full_pipeline():
     return results
 
 
-# Stats endpoint
+# Stats endpoint - Updated for Solo SaaS Finder v2.0
 @app.get("/stats")
 async def get_stats():
-    """Get system statistics."""
+    """Get system statistics with new scoring factors."""
     db = get_database()
 
     signals = await db.get_processed_signals(days=30)
     patterns = await db.get_patterns()
     opportunities = await db.get_opportunities()
 
-    # Calculate thesis distribution
+    # Filter out disqualified signals for stats
+    valid_signals = [s for s in signals if not getattr(s, 'is_disqualified', False)]
+    disqualified_count = len(signals) - len(valid_signals)
+
+    # Calculate new thesis distribution (Solo SaaS Finder v2.0)
     thesis_counts = {
-        "ai_leverage": 0,
-        "trust_scarcity": 0,
-        "physical_digital": 0,
-        "incumbent_decay": 0,
-        "speed_advantage": 0,
-        "execution_fit": 0
+        "demand_evidence": 0,
+        "competition_gap": 0,
+        "trend_timing": 0,
+        "solo_buildability": 0,
+        "clear_monetisation": 0,
+        "regulatory_simplicity": 0
     }
 
-    for s in signals:
+    thesis_averages = {
+        "demand_evidence": [],
+        "competition_gap": [],
+        "trend_timing": [],
+        "solo_buildability": [],
+        "clear_monetisation": [],
+        "regulatory_simplicity": []
+    }
+
+    for s in valid_signals:
         if s.thesis_scores:
-            if s.thesis_scores.ai_leverage and s.thesis_scores.ai_leverage >= 7:
-                thesis_counts["ai_leverage"] += 1
-            if s.thesis_scores.trust_scarcity and s.thesis_scores.trust_scarcity >= 7:
-                thesis_counts["trust_scarcity"] += 1
-            if s.thesis_scores.physical_digital and s.thesis_scores.physical_digital >= 7:
-                thesis_counts["physical_digital"] += 1
-            if s.thesis_scores.incumbent_decay and s.thesis_scores.incumbent_decay >= 7:
-                thesis_counts["incumbent_decay"] += 1
-            if s.thesis_scores.speed_advantage and s.thesis_scores.speed_advantage >= 7:
-                thesis_counts["speed_advantage"] += 1
-            if s.thesis_scores.execution_fit and s.thesis_scores.execution_fit >= 7:
-                thesis_counts["execution_fit"] += 1
+            for key in thesis_counts:
+                score = getattr(s.thesis_scores, key, None)
+                if score:
+                    thesis_averages[key].append(score)
+                    if score >= 7:
+                        thesis_counts[key] += 1
+
+    # Calculate averages
+    thesis_avg = {}
+    for key, scores in thesis_averages.items():
+        thesis_avg[key] = round(sum(scores) / len(scores), 2) if scores else 0
+
+    # Count opportunities by verdict
+    verdict_counts = {}
+    for o in opportunities:
+        verdict = getattr(o, 'verdict', None) or 'N/A'
+        verdict_counts[verdict] = verdict_counts.get(verdict, 0) + 1
+
+    # Count opportunities by type
+    type_counts = {}
+    for o in opportunities:
+        otype = o.opportunity_type or 'unknown'
+        type_counts[otype] = type_counts.get(otype, 0) + 1
+
+    # Signal type distribution
+    signal_type_counts = {}
+    for s in valid_signals:
+        stype = s.signal_type or 'unknown'
+        signal_type_counts[stype] = signal_type_counts.get(stype, 0) + 1
 
     return {
-        "signals_30d": len(signals),
+        "version": "2.0.0",
+        "name": "Solo SaaS Finder",
+        "signals_30d": len(valid_signals),
+        "signals_disqualified": disqualified_count,
         "patterns_total": len(patterns),
         "patterns_new": len([p for p in patterns if p.status == PatternStatus.NEW]),
         "opportunities_total": len(opportunities),
         "opportunities_new": len([o for o in opportunities if o.status == OpportunityStatus.NEW]),
-        "thesis_distribution": thesis_counts
+        "opportunities_build_now": verdict_counts.get("BUILD NOW", 0),
+        "thesis_high_score_counts": thesis_counts,
+        "thesis_averages": thesis_avg,
+        "verdict_distribution": verdict_counts,
+        "opportunity_type_distribution": type_counts,
+        "signal_type_distribution": signal_type_counts
+    }
+
+
+# New endpoint: Scoring factors info
+@app.get("/scoring-factors")
+async def get_scoring_factors():
+    """Get information about the 6 scoring factors used in Solo SaaS Finder v2.0."""
+    return {
+        "version": "2.0.0",
+        "factors": [
+            {
+                "key": "demand_evidence",
+                "name": "Demand Evidence",
+                "weight": 1.0,
+                "description": "Proof people want this and would pay. Are people actively searching? Complaints in forums? Asking 'is there a tool for X'?"
+            },
+            {
+                "key": "competition_gap",
+                "name": "Competition Gap",
+                "weight": 1.0,
+                "description": "Is the space empty or poorly served? Outdated, overpriced, or poorly executed players?"
+            },
+            {
+                "key": "trend_timing",
+                "name": "Trend Timing",
+                "weight": 0.8,
+                "description": "Is this the right time? Emerging trend, growing search volume, early adopters looking?"
+            },
+            {
+                "key": "solo_buildability",
+                "name": "Solo Buildability",
+                "weight": 1.0,
+                "description": "Can one person build an MVP in 2-4 weeks? Straightforward technical requirements?"
+            },
+            {
+                "key": "clear_monetisation",
+                "name": "Clear Monetisation",
+                "weight": 1.0,
+                "description": "Will people pay monthly? Obvious subscription or listing fee model?"
+            },
+            {
+                "key": "regulatory_simplicity",
+                "name": "Regulatory Simplicity",
+                "weight": 1.0,
+                "description": "Is it regulation-free? No licensing, compliance, or legal complexity?"
+            }
+        ],
+        "disqualified_industries": [
+            "financial services", "fintech", "banking", "lending", "payments", "investing",
+            "healthcare", "healthtech", "medical", "telehealth",
+            "legal", "legal tech", "law",
+            "insurance", "gambling", "betting",
+            "pharmaceuticals", "cannabis", "firearms", "government contracting"
+        ],
+        "opportunity_types": {
+            "tier_1": ["vertical_saas", "directory", "micro_saas", "productised_service"],
+            "tier_2": ["internal_tools", "workflow_automation", "data_product"],
+            "tier_3": ["marketplace", "platform"]
+        },
+        "verdicts": ["BUILD NOW", "EXPLORE", "MONITOR", "PASS"]
     }

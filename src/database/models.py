@@ -39,6 +39,14 @@ class TimingStage(str, Enum):
     CROWDED = "crowded"
 
 
+class OpportunityVerdict(str, Enum):
+    """Verdict for an opportunity."""
+    BUILD_NOW = "BUILD NOW"
+    EXPLORE = "EXPLORE"
+    MONITOR = "MONITOR"
+    PASS = "PASS"
+
+
 class RunStatus(str, Enum):
     """Status of a collection or analysis run."""
     RUNNING = "running"
@@ -64,15 +72,15 @@ class RawSignal(RawSignalCreate):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-# Processed Signal Models
+# New Thesis Scores for Solo SaaS Finder v2.0
 class ThesisScores(BaseModel):
-    """Thesis alignment scores."""
-    ai_leverage: Optional[int] = None
-    trust_scarcity: Optional[int] = None
-    physical_digital: Optional[int] = None
-    incumbent_decay: Optional[int] = None
-    speed_advantage: Optional[int] = None
-    execution_fit: Optional[int] = None
+    """Thesis alignment scores - Solo SaaS Finder v2.0"""
+    demand_evidence: Optional[int] = None
+    competition_gap: Optional[int] = None
+    trend_timing: Optional[int] = None
+    solo_buildability: Optional[int] = None
+    clear_monetisation: Optional[int] = None
+    regulatory_simplicity: Optional[int] = None
 
 
 class EntityExtraction(BaseModel):
@@ -90,6 +98,9 @@ class ProcessedSignalCreate(BaseModel):
     signal_subtype: Optional[str] = None
     title: Optional[str] = None
     summary: Optional[str] = None
+    # New field for SaaS focus
+    problem_summary: Optional[str] = None
+    demand_evidence_level: Optional[str] = None  # high/medium/low/none
     entities: EntityExtraction = Field(default_factory=EntityExtraction)
     keywords: List[str] = []
     thesis_scores: ThesisScores = Field(default_factory=ThesisScores)
@@ -98,6 +109,9 @@ class ProcessedSignalCreate(BaseModel):
     velocity_score: Optional[float] = None
     geography: Optional[str] = None
     timing_stage: Optional[str] = None
+    # Disqualification tracking
+    is_disqualified: bool = False
+    disqualification_reason: Optional[str] = None
 
 
 class ProcessedSignal(ProcessedSignalCreate):
@@ -132,18 +146,52 @@ class PatternMatch(PatternMatchCreate):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-# Opportunity Models
+# Opportunity Models - Updated for SaaS focus
 class OpportunityCreate(BaseModel):
     """Schema for creating an opportunity."""
     title: str
+    # New SaaS-focused fields
+    business_name: Optional[str] = None
+    one_liner: Optional[str] = None
     summary: Optional[str] = None
     detailed_analysis: Optional[str] = None
+    # Problem/Solution
+    problem_description: Optional[str] = None
+    target_customer: Optional[str] = None
+    current_solutions: Optional[str] = None
+    proposed_solution: Optional[str] = None
+    core_features: List[str] = []
+    # Evidence
+    demand_evidence: Optional[str] = None
+    demand_strength: Optional[str] = None  # strong/moderate/weak
+    # Competition
+    competitors: List[str] = []
+    competition_weakness: Optional[str] = None
+    # Build assessment
+    tech_stack_recommendation: Optional[str] = None
+    build_time_estimate: Optional[str] = None
+    technical_challenges: List[str] = []
+    can_ship_in_4_weeks: bool = True
+    # Monetisation
+    pricing_model: Optional[str] = None
+    suggested_price_points: Optional[str] = None
+    who_pays: Optional[str] = None
+    # Go-to-market
+    customer_channels: List[str] = []
+    first_customers_strategy: Optional[str] = None
+    seo_potential: Optional[str] = None
+    # Scoring
     pattern_ids: List[UUID] = []
     signal_ids: List[UUID] = []
-    opportunity_type: Optional[str] = None
+    opportunity_type: Optional[str] = None  # vertical_saas, directory, micro_saas, etc.
     industries: List[str] = []
     geographies: List[str] = []
     thesis_scores: Dict[str, Any] = {}
+    overall_score: Optional[int] = None
+    # Verdict
+    verdict: Optional[str] = None  # BUILD NOW, EXPLORE, MONITOR, PASS
+    first_steps: List[str] = []
+    # Legacy fields for compatibility
     primary_thesis: Optional[str] = None
     execution_fit_reasoning: Optional[str] = None
     timing_stage: Optional[str] = None
@@ -241,3 +289,8 @@ class DigestContent(BaseModel):
     velocity_spikes: List[Dict[str, Any]]
     key_insight: str
     recommended_actions: List[str]
+    # New fields for SaaS digest
+    top_build_ready_ideas: List[Dict[str, Any]] = []
+    emerging_trends: List[Dict[str, Any]] = []
+    pass_list: List[Dict[str, Any]] = []
+    this_week_action: Optional[str] = None

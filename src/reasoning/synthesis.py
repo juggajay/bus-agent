@@ -1,4 +1,4 @@
-"""Synthesis and quarterly review generation."""
+"""Synthesis and quarterly review generation - Solo SaaS Finder v2.0"""
 
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -17,7 +17,7 @@ logger = get_logger(__name__)
 
 
 class Synthesizer:
-    """Generate synthesis reports and digests."""
+    """Generate synthesis reports and digests for SaaS opportunity discovery."""
 
     def __init__(self):
         settings = get_settings()
@@ -33,7 +33,7 @@ class Synthesizer:
         opportunities: List[Opportunity]
     ) -> Dict[str, Any]:
         """
-        Generate a quarterly synthesis report.
+        Generate a quarterly synthesis report focused on SaaS opportunities.
 
         Args:
             quarter: Quarter identifier (e.g., "Q4 2024")
@@ -47,10 +47,13 @@ class Synthesizer:
         try:
             await self.rate_limiter.acquire()
 
+            # Filter out disqualified signals
+            valid_signals = [s for s in signals if not getattr(s, 'is_disqualified', False)]
+
             # Prepare summaries
             patterns_summary = self._summarize_patterns(patterns)
             opportunities_summary = self._summarize_opportunities(opportunities)
-            thesis_distribution = self._calculate_thesis_distribution(signals)
+            thesis_distribution = self._calculate_thesis_distribution(valid_signals)
 
             response = await self.client.messages.create(
                 model="claude-sonnet-4-20250514",
@@ -59,7 +62,7 @@ class Synthesizer:
                     "role": "user",
                     "content": QUARTERLY_SYNTHESIS_PROMPT.format(
                         quarter=quarter,
-                        signal_count=len(signals),
+                        signal_count=len(valid_signals),
                         pattern_count=len(patterns),
                         opportunity_count=len(opportunities),
                         patterns_summary=json.dumps(patterns_summary, indent=2),
@@ -81,7 +84,8 @@ class Synthesizer:
                 "quarter": quarter,
                 "generated_at": datetime.utcnow().isoformat(),
                 "statistics": {
-                    "signals": len(signals),
+                    "signals": len(valid_signals),
+                    "signals_disqualified": len(signals) - len(valid_signals),
                     "patterns": len(patterns),
                     "opportunities": len(opportunities)
                 },
@@ -103,7 +107,7 @@ class Synthesizer:
         opportunities: List[Opportunity]
     ) -> Dict[str, Any]:
         """
-        Generate a periodic digest (weekly/monthly).
+        Generate a periodic digest (weekly/monthly) focused on SaaS opportunities.
 
         Args:
             period: "weekly" or "monthly"
@@ -117,35 +121,46 @@ class Synthesizer:
         try:
             await self.rate_limiter.acquire()
 
-            # Prepare summaries
+            # Filter out disqualified signals
+            valid_signals = [s for s in signals if not getattr(s, 'is_disqualified', False)]
+
+            # Prepare summaries with SaaS-focused fields
             top_patterns = [{
                 "title": p.title,
                 "type": p.pattern_type,
                 "score": p.opportunity_score,
-                "description": p.description
+                "description": p.description,
+                "primary_thesis": p.primary_thesis_alignment
             } for p in sorted(patterns, key=lambda x: x.opportunity_score, reverse=True)[:5]]
 
             new_opportunities = [{
                 "title": o.title,
+                "business_name": getattr(o, 'business_name', None) or o.title,
+                "one_liner": getattr(o, 'one_liner', None) or o.summary,
                 "summary": o.summary,
+                "verdict": getattr(o, 'verdict', None),
                 "timing": o.timing_stage,
-                "action": o.status
+                "opportunity_type": o.opportunity_type,
+                "overall_score": getattr(o, 'overall_score', None),
+                "build_time": getattr(o, 'build_time_estimate', None),
+                "first_steps": getattr(o, 'first_steps', [])[:2]
             } for o in opportunities[:5]]
 
             velocity_spikes = [{
                 "keywords": s.keywords[:3] if s.keywords else [],
                 "velocity": s.velocity_score,
-                "type": s.signal_type
-            } for s in signals if s.velocity_score and s.velocity_score > 0.7][:5]
+                "type": s.signal_type,
+                "problem_summary": getattr(s, 'problem_summary', '') or ''
+            } for s in valid_signals if s.velocity_score and s.velocity_score > 0.7][:5]
 
             response = await self.client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=2000,
+                max_tokens=3000,
                 messages=[{
                     "role": "user",
                     "content": DIGEST_GENERATION_PROMPT.format(
                         period=period,
-                        signal_count=len(signals),
+                        signal_count=len(valid_signals),
                         pattern_count=len(patterns),
                         opportunity_count=len(opportunities),
                         top_patterns=json.dumps(top_patterns, indent=2),
@@ -166,7 +181,8 @@ class Synthesizer:
             return {
                 "period": period,
                 "generated_at": datetime.utcnow().isoformat(),
-                "signals_processed": len(signals),
+                "signals_processed": len(valid_signals),
+                "signals_disqualified": len(signals) - len(valid_signals),
                 "patterns_detected": len(patterns),
                 "opportunities_identified": len(opportunities),
                 **result
@@ -198,24 +214,27 @@ class Synthesizer:
         ]
 
     def _summarize_opportunities(self, opportunities: List[Opportunity]) -> List[Dict]:
-        """Summarize opportunities for synthesis."""
+        """Summarize opportunities for synthesis with SaaS-focused fields."""
         return [{
             "title": o.title,
+            "business_name": getattr(o, 'business_name', None),
             "type": o.opportunity_type,
             "timing": o.timing_stage,
+            "verdict": getattr(o, 'verdict', None),
+            "overall_score": getattr(o, 'overall_score', None),
             "primary_thesis": o.primary_thesis,
-            "status": o.status
+            "status": o.status.value if hasattr(o.status, 'value') else o.status
         } for o in opportunities[:10]]
 
     def _calculate_thesis_distribution(self, signals: List[ProcessedSignal]) -> Dict[str, Dict]:
-        """Calculate thesis score distribution across signals."""
+        """Calculate thesis score distribution across signals - Updated for Solo SaaS Finder v2.0"""
         distributions = {
-            "ai_leverage": {"count": 0, "avg": 0, "high_count": 0},
-            "trust_scarcity": {"count": 0, "avg": 0, "high_count": 0},
-            "physical_digital": {"count": 0, "avg": 0, "high_count": 0},
-            "incumbent_decay": {"count": 0, "avg": 0, "high_count": 0},
-            "speed_advantage": {"count": 0, "avg": 0, "high_count": 0},
-            "execution_fit": {"count": 0, "avg": 0, "high_count": 0}
+            "demand_evidence": {"count": 0, "avg": 0, "high_count": 0},
+            "competition_gap": {"count": 0, "avg": 0, "high_count": 0},
+            "trend_timing": {"count": 0, "avg": 0, "high_count": 0},
+            "solo_buildability": {"count": 0, "avg": 0, "high_count": 0},
+            "clear_monetisation": {"count": 0, "avg": 0, "high_count": 0},
+            "regulatory_simplicity": {"count": 0, "avg": 0, "high_count": 0}
         }
 
         for s in signals:
@@ -255,8 +274,9 @@ class Synthesizer:
                 "opportunities": len(opportunities)
             },
             "error": "Synthesis generation failed",
-            "macro_trends": {"big_shifts": [], "landscape_changes": "Unable to analyze"},
+            "macro_trends": {"big_shifts": [], "growing_niches": []},
             "top_opportunities": [],
+            "build_now_candidates": {"ready_to_build": [], "needs_more_validation": []},
             "recommended_focus": {"next_quarter_focus": ["Review manually"]}
         }
 
@@ -275,7 +295,12 @@ class Synthesizer:
             "patterns_detected": len(patterns),
             "opportunities_identified": len(opportunities),
             "error": "Digest generation failed",
+            "headline": "Unable to generate headline",
             "key_insight": "Unable to generate insight",
+            "top_build_ready_ideas": [],
+            "emerging_trends": [],
+            "pass_list": [],
+            "this_week_action": "Review data manually",
             "recommended_actions": ["Review data manually"]
         }
 

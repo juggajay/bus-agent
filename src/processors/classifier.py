@@ -1,4 +1,4 @@
-"""Signal classification using LLM."""
+"""Signal classification using LLM - Solo SaaS Finder v2.0"""
 
 from typing import Dict, Any, Optional
 import json
@@ -7,43 +7,13 @@ from anthropic import AsyncAnthropic
 
 from ..database import RawSignal, EntityExtraction
 from ..utils import get_settings, get_logger, get_rate_limiter, SIGNAL_TYPES
+from ..reasoning.prompts import CLASSIFICATION_PROMPT
 
 logger = get_logger(__name__)
 
-CLASSIFICATION_PROMPT = """You are classifying a signal for a business intelligence system.
-
-Signal source: {source_type}
-Signal category: {source_category}
-Signal content: {content}
-
-Classify this signal:
-1. Primary type (one of: trend, complaint, regulatory, funding, job_market, builder_activity, consumer_behaviour, competitive)
-2. Subtype (specific category within the type)
-3. Brief summary (1-2 sentences)
-4. Key entities:
-   - companies: List of company names mentioned
-   - technologies: List of technologies, frameworks, tools mentioned
-   - industries: List of industries/sectors mentioned
-   - locations: List of geographic locations mentioned
-5. Relevant keywords for search (5-10 keywords)
-
-Respond ONLY with valid JSON in this exact format:
-{{
-    "signal_type": "string",
-    "signal_subtype": "string",
-    "summary": "string",
-    "entities": {{
-        "companies": ["string"],
-        "technologies": ["string"],
-        "industries": ["string"],
-        "locations": ["string"]
-    }},
-    "keywords": ["string"]
-}}"""
-
 
 class SignalClassifier:
-    """Classify signals using Claude."""
+    """Classify signals using Claude for SaaS business opportunity discovery."""
 
     def __init__(self):
         settings = get_settings()
@@ -51,7 +21,21 @@ class SignalClassifier:
         self.rate_limiter = get_rate_limiter("anthropic")
 
     async def classify(self, signal: RawSignal) -> Dict[str, Any]:
-        """Classify a raw signal."""
+        """
+        Classify a raw signal for SaaS opportunity discovery.
+
+        Returns:
+            Dict containing:
+            - signal_type: One of demand_signal, complaint, trend, competition_intel, market_shift, builder_activity
+            - signal_subtype: Specific subtype
+            - title: Short title for the signal
+            - summary: Brief summary
+            - problem_summary: One-sentence problem description
+            - demand_evidence_level: high/medium/low/none
+            - industry: Specific industry/niche
+            - entities: EntityExtraction object
+            - keywords: List of keywords
+        """
         try:
             await self.rate_limiter.acquire()
 
@@ -82,16 +66,21 @@ class SignalClassifier:
 
             result = json.loads(response_text)
 
-            # Validate signal type
-            if result.get("signal_type") not in SIGNAL_TYPES:
-                logger.warning(f"Invalid signal type: {result.get('signal_type')}")
-                result["signal_type"] = "trend"
+            # Validate signal type against new types
+            valid_types = list(SIGNAL_TYPES.keys())
+            signal_type = result.get("signal_type", "trend")
+            if signal_type not in valid_types:
+                logger.warning(f"Invalid signal type: {signal_type}, defaulting to trend")
+                signal_type = "trend"
 
             return {
-                "signal_type": result.get("signal_type", "trend"),
+                "signal_type": signal_type,
                 "signal_subtype": result.get("signal_subtype", ""),
                 "title": result.get("summary", "")[:200],
                 "summary": result.get("summary", ""),
+                "problem_summary": result.get("problem_summary", ""),
+                "demand_evidence_level": result.get("demand_evidence_level", "none"),
+                "industry": result.get("industry", ""),
                 "entities": EntityExtraction(
                     companies=result.get("entities", {}).get("companies", []),
                     technologies=result.get("entities", {}).get("technologies", []),
@@ -115,6 +104,9 @@ class SignalClassifier:
             "signal_subtype": "unknown",
             "title": f"Signal from {signal.source_type}",
             "summary": f"Unclassified signal from {signal.source_type}",
+            "problem_summary": "",
+            "demand_evidence_level": "none",
+            "industry": "",
             "entities": EntityExtraction(),
             "keywords": []
         }

@@ -1,91 +1,166 @@
-# Core thesis configuration
+# Solo SaaS Finder - Thesis Configuration v2.0
+# Focus: SaaS and directory business ideas for solo operators
 
-thesis_elements:
-  ai_leverage:
-    name: "AI Leverage"
-    description: >
-      Does this opportunity allow a solo operator or small team to do what
-      previously required 20+ people? Is AI a genuine force multiplier here
-      or just a feature?
-    weight: 1.0
-    indicators:
-      - automation of manual processes
-      - reduction in required headcount
-      - AI-native workflows
-      - LLM integration opportunities
+thesis:
+  name: "Solo SaaS Finder"
+  version: "2.0"
 
-  trust_scarcity:
-    name: "Trust Scarcity"
-    description: >
-      In a world where everything can be faked, does this opportunity leverage
-      verified credentials, provable data, or authentic expertise as a moat?
-    weight: 1.0
-    indicators:
-      - verification requirements
-      - credential importance
-      - authenticity premium
-      - trust as competitive advantage
+  scoring_factors:
+    demand_evidence:
+      name: "Demand Evidence"
+      weight: 1.0
+      description: >
+        Proof people want this and would pay. Are people actively searching for this?
+        Are there complaints about this problem in forums/social? Are people asking
+        "is there a tool for X?" Are existing solutions getting negative reviews?
+      scoring_guide:
+        9-10: "Multiple sources showing active demand, people asking for solutions"
+        7-8: "Clear complaints or searches, likely to pay"
+        5-6: "Some interest but unproven willingness to pay"
+        1-4: "Theoretical or no evidence"
 
-  physical_digital:
-    name: "Physical-Digital Intersection"
-    description: >
-      Is this where atoms meet bits? The underexplored space where real-world
-      friction meets software solutions.
-    weight: 1.0
-    indicators:
-      - real-world integration
-      - hardware-software bridge
-      - physical world data
-      - on-the-ground operations
+    competition_gap:
+      name: "Competition Gap"
+      weight: 1.0
+      description: >
+        Is the space empty or poorly served? Are existing players outdated, overpriced,
+        or poorly executed? Is there room for a focused solo-built alternative?
+      scoring_guide:
+        9-10: "No existing solutions or only terrible ones"
+        7-8: "Weak competition, room for better alternative"
+        5-6: "Some players but fragmented or outdated"
+        1-4: "Crowded market with strong players"
 
-  incumbent_decay:
-    name: "Incumbent Decay"
-    description: >
-      Are existing players slow, bloated, protected by inertia, or failing to
-      adapt? Is there a window to move fast?
-    weight: 1.0
-    indicators:
-      - legacy technology
-      - slow response times
-      - customer complaints
-      - regulatory protection eroding
+    trend_timing:
+      name: "Trend Timing"
+      weight: 0.8
+      description: >
+        Is this the right time? Is this an emerging trend (not too early, not too late)?
+        Is search volume growing? Are early adopters already looking for solutions?
+      scoring_guide:
+        9-10: "Clear upward trend, early enough to capture"
+        7-8: "Growing interest, good timing"
+        5-6: "Stable demand, not growing but viable"
+        1-4: "Declining or too early"
 
-  speed_advantage:
-    name: "Speed Advantage"
-    description: >
-      Can this be executed quickly? Is first-to-iterate-well still a viable
-      strategy here?
-    weight: 1.0
-    indicators:
-      - low barrier to entry
-      - rapid iteration possible
-      - market not yet consolidated
-      - network effects buildable
+    solo_buildability:
+      name: "Solo Buildability"
+      weight: 1.0
+      description: >
+        Can one person build an MVP in 2-4 weeks? Are the technical requirements
+        straightforward? Can it launch without a team?
+      scoring_guide:
+        9-10: "Simple CRUD app, directory, or basic SaaS"
+        7-8: "Moderate complexity but doable solo"
+        5-6: "Would take 1-2 months solo"
+        1-4: "Needs team or 3+ months to build"
 
-  execution_fit:
-    name: "Execution Edge Fit"
-    description: >
-      How well does this match the operator's specific strengths:
-      construction/trades knowledge, technical ability, solo operator model,
-      Australia/SEA geography?
-    weight: 1.2
-    indicators:
-      - construction/trades relevance
-      - technical implementation path
-      - solo operation viable
-      - AU/SEA market opportunity
+    clear_monetisation:
+      name: "Clear Monetisation"
+      weight: 1.0
+      description: >
+        Will people pay monthly? Is there an obvious subscription or listing fee model?
+        Is the value proposition clear?
+      scoring_guide:
+        9-10: "Obvious subscription value, proven price points in market"
+        7-8: "Clear value prop, likely to pay"
+        5-6: "Could monetise but model unclear"
+        1-4: "Hard to charge, freemium trap"
+
+    regulatory_simplicity:
+      name: "Regulatory Simplicity"
+      weight: 1.0
+      description: >
+        Is it regulation-free? Does this avoid heavily regulated industries?
+        No licensing, compliance, or legal complexity?
+      scoring_guide:
+        9-10: "No regulatory concerns whatsoever"
+        7-8: "Minor considerations but manageable"
+        5-6: "Some compliance needs but not blocking"
+        1-4: "Heavily regulated, avoid"
+
+disqualified_industries:
+  # Financial services
+  - financial services
+  - fintech
+  - banking
+  - lending
+  - payments
+  - investing
+  - cryptocurrency
+  - trading
+  # Healthcare
+  - healthcare
+  - healthtech
+  - medical
+  - telehealth
+  - patient data
+  - medical devices
+  # Legal
+  - legal
+  - legal tech
+  - law
+  - legal advice
+  # Insurance
+  - insurance
+  - insurtech
+  # Gambling
+  - gambling
+  - betting
+  - casino
+  - sports betting
+  # Other regulated
+  - pharmaceuticals
+  - cannabis
+  - marijuana
+  - firearms
+  - weapons
+  - government contracting
+  - controlled substances
+
+opportunity_types:
+  tier_1:
+    - name: vertical_saas
+      description: "Software for a specific niche/industry"
+    - name: directory
+      description: "Connect buyers with providers, charge for listings"
+    - name: micro_saas
+      description: "Small, focused tools solving one problem well"
+    - name: productised_service
+      description: "Automated service delivery via software"
+
+  tier_2:
+    - name: internal_tools
+      description: "Help businesses run operations"
+    - name: workflow_automation
+      description: "Save time on repetitive tasks"
+    - name: data_product
+      description: "Aggregate and present useful data"
+
+  tier_3:
+    - name: marketplace
+      description: "Only if supply-side is easy to bootstrap"
+    - name: platform
+      description: "Only if MVP is focused, not trying to be everything"
+
+build_constraints:
+  max_build_time: "4 weeks"
+  ideal_build_time: "2-4 weeks"
+  team_size: 1
+  funding_required: none
 
 operator_profile:
-  background: "Solo entrepreneur with construction/carpentry background"
-  technical_ability: "Can build software"
-  geography: "Based in Australia with knowledge of SEA markets"
+  team_size: 1
+  funding: none
+  technical_skills: full_stack
+  time_to_mvp: "2-4 weeks"
   preferences:
-    - "Opportunities with data moats"
-    - "Regulatory advantages"
-    - "Quick execution"
-    - "Minimal team or capital requirements"
+    - "Fast to ship"
+    - "Clear monetisation"
+    - "Subscription or listing revenue"
+    - "Avoid regulated industries"
+    - "Solo buildable"
   strengths:
-    - "Construction/trades domain knowledge"
-    - "Technical implementation ability"
-    - "Solo operator efficiency"
-    - "Australia/SEA market understanding"
+    - "Full-stack development"
+    - "Fast iteration"
+    - "Solo execution"

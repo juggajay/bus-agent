@@ -2,7 +2,7 @@
 
 from pydantic_settings import BaseSettings
 from pydantic import Field
-from typing import Optional
+from typing import Optional, List
 import os
 
 
@@ -44,87 +44,140 @@ class Settings(BaseSettings):
         env_file_encoding = "utf-8"
 
 
-# Thesis configuration - hardcoded as per spec
+# New thesis configuration - Solo SaaS Finder v2.0
 THESIS = {
-    "ai_leverage": {
-        "name": "AI Leverage",
-        "description": "Does this opportunity allow a solo operator or small team to do what previously required 20+ people? Is AI a genuine force multiplier here or just a feature?",
+    "demand_evidence": {
+        "name": "Demand Evidence",
+        "description": "Proof people want this and would pay. Are people actively searching? Complaints in forums? Asking 'is there a tool for X'?",
         "weight": 1.0
     },
-    "trust_scarcity": {
-        "name": "Trust Scarcity",
-        "description": "In a world where everything can be faked, does this opportunity leverage verified credentials, provable data, or authentic expertise as a moat?",
+    "competition_gap": {
+        "name": "Competition Gap",
+        "description": "Is the space empty or poorly served? Outdated, overpriced, or poorly executed players?",
         "weight": 1.0
     },
-    "physical_digital": {
-        "name": "Physical-Digital Intersection",
-        "description": "Is this where atoms meet bits? The underexplored space where real-world friction meets software solutions.",
+    "trend_timing": {
+        "name": "Trend Timing",
+        "description": "Is this the right time? Emerging trend, growing search volume, early adopters looking?",
+        "weight": 0.8
+    },
+    "solo_buildability": {
+        "name": "Solo Buildability",
+        "description": "Can one person build an MVP in 2-4 weeks? Straightforward technical requirements?",
         "weight": 1.0
     },
-    "incumbent_decay": {
-        "name": "Incumbent Decay",
-        "description": "Are existing players slow, bloated, protected by inertia, or failing to adapt? Is there a window to move fast?",
+    "clear_monetisation": {
+        "name": "Clear Monetisation",
+        "description": "Will people pay monthly? Obvious subscription or listing fee model?",
         "weight": 1.0
     },
-    "speed_advantage": {
-        "name": "Speed Advantage",
-        "description": "Can this be executed quickly? Is first-to-iterate-well still a viable strategy here?",
+    "regulatory_simplicity": {
+        "name": "Regulatory Simplicity",
+        "description": "Is it regulation-free? No licensing, compliance, or legal complexity?",
         "weight": 1.0
-    },
-    "execution_fit": {
-        "name": "Execution Edge Fit",
-        "description": "How well does this match the operator's specific strengths (construction/trades knowledge, technical ability, solo operator model, Australia/SEA geography)?",
-        "weight": 1.2  # Slightly higher weight for personal fit
     }
 }
 
-# Operator profile - hardcoded as per spec
+# Operator profile - Solo SaaS builder
 OPERATOR_PROFILE = {
-    "background": "Solo entrepreneur with construction/carpentry background",
-    "technical_ability": "Can build software",
-    "geography": "Based in Australia with knowledge of SEA markets",
+    "team_size": 1,
+    "funding": "none",
+    "technical_skills": "full_stack",
+    "time_to_mvp": "2-4 weeks",
     "preferences": [
-        "Opportunities with data moats",
-        "Regulatory advantages",
-        "Quick execution",
-        "Minimal team or capital requirements"
+        "Fast to ship",
+        "Clear monetisation",
+        "Subscription or listing revenue",
+        "Avoid regulated industries",
+        "Solo buildable"
     ],
     "strengths": [
-        "Construction/trades domain knowledge",
-        "Technical implementation ability",
-        "Solo operator efficiency",
-        "Australia/SEA market understanding"
+        "Full-stack development",
+        "Fast iteration",
+        "Solo execution"
     ]
 }
 
-# Target subreddits for monitoring
-TARGET_SUBREDDITS = [
-    # Business/Entrepreneurship
-    "smallbusiness", "entrepreneur", "startups",
-    # Australian markets
-    "australia", "ausfinance", "australianpolitics",
-    # Construction/Trades
-    "construction", "contractors", "trades",
-    "plumbing", "electricians", "HVAC", "pestcontrol",
-    # Tech/SaaS
-    "SaaS", "webdev", "programming",
-    # Real estate
-    "realestate", "landlords",
-    # AI/ML
-    "LocalLLaMA", "MachineLearning", "artificial"
+# Industries to automatically disqualify
+DISQUALIFIED_INDUSTRIES = [
+    # Financial services
+    "financial services", "fintech", "banking", "lending", "payments",
+    "investing", "cryptocurrency", "trading",
+    # Healthcare
+    "healthcare", "healthtech", "medical", "telehealth", "patient data",
+    "medical devices",
+    # Legal
+    "legal", "legal tech", "law", "legal advice",
+    # Insurance
+    "insurance", "insurtech",
+    # Gambling
+    "gambling", "betting", "casino", "sports betting",
+    # Other regulated
+    "pharmaceuticals", "cannabis", "marijuana", "firearms", "weapons",
+    "government contracting", "controlled substances"
 ]
 
-# Signal types for classification
+# Target subreddits for monitoring - focused on finding business problems
+TARGET_SUBREDDITS = [
+    # Business/Entrepreneur - where people discuss problems
+    "smallbusiness", "entrepreneur", "sweatystartup",
+    "SaaS", "microsaas", "indiehackers",
+
+    # Industry-specific (problems, not solutions)
+    "realestate", "realestateinvesting",
+    "ecommerce", "dropshipping",
+    "agencies", "marketing", "SEO", "PPC",
+    "photography", "videography", "wedding",
+    "fitness",  # gym owners
+    "restaurateur", "barowners", "hoteliers",
+    "airbnb_hosts", "landlords", "propertymanagement",
+
+    # Trades (non-regulated)
+    "landscaping", "lawncare", "pressurewashing",
+    "autodetailing", "carwash", "cleaning",
+    "homeimprovement", "HVAC", "pestcontrol",
+    "roofing", "electricians", "plumbing",
+    "contractors"
+]
+
+# Search patterns for finding demand signals in Reddit
+DEMAND_SIGNAL_PATTERNS = [
+    "is there a tool",
+    "is there software",
+    "I wish there was",
+    "does anyone know a",
+    "looking for a solution",
+    "spreadsheet hell",
+    "manual process",
+    "waste so much time",
+    "anyone know of",
+    "recommendation for",
+    "what do you use for",
+    "how do you handle",
+    "struggling with",
+    "pain point",
+    "frustrated with"
+]
+
+# Signal types for classification - updated for SaaS focus
 SIGNAL_TYPES = {
-    "trend": ["rising", "declining", "stable", "breakout"],
-    "complaint": ["product", "service", "pricing", "availability"],
-    "regulatory": ["new_requirement", "deregulation", "enforcement", "proposed"],
-    "funding": ["seed", "series_a", "series_b_plus", "acquisition", "ipo"],
-    "job_market": ["new_role", "hiring_surge", "layoffs", "skill_shift"],
-    "builder_activity": ["new_project", "trending_repo", "package_growth", "launch"],
-    "consumer_behaviour": ["spending_shift", "platform_migration", "search_intent"],
-    "competitive": ["new_entrant", "incumbent_move", "market_exit", "pricing_change"]
+    "demand_signal": ["active_search", "feature_request", "willing_to_pay", "asking_for_tool"],
+    "complaint": ["existing_tool", "pricing", "missing_feature", "poor_ux", "reliability"],
+    "trend": ["rising", "emerging", "growing", "stable"],
+    "competition_intel": ["new_player", "weakness", "pricing_change", "shutdown", "pivot"],
+    "market_shift": ["industry_change", "regulation_change", "technology_shift", "behavior_change"],
+    "builder_activity": ["new_launch", "trending_repo", "indie_success", "saas_launch"]
 }
+
+# Opportunity types prioritization
+OPPORTUNITY_TYPES = {
+    "tier_1": ["vertical_saas", "directory", "micro_saas", "productised_service"],
+    "tier_2": ["internal_tools", "workflow_automation", "data_product"],
+    "tier_3": ["marketplace", "platform"]
+}
+
+# Verdict options for opportunities
+OPPORTUNITY_VERDICTS = ["BUILD NOW", "EXPLORE", "MONITOR", "PASS"]
 
 # Geography codes
 GEOGRAPHIES = ["US", "UK", "AU", "CA", "NZ", "global"]
@@ -136,3 +189,12 @@ TIMING_STAGES = ["early", "emerging", "growing", "crowded"]
 def get_settings() -> Settings:
     """Get application settings singleton."""
     return Settings()
+
+
+def is_disqualified_industry(industry: str) -> bool:
+    """Check if an industry is in the disqualified list."""
+    industry_lower = industry.lower()
+    return any(
+        disqualified.lower() in industry_lower or industry_lower in disqualified.lower()
+        for disqualified in DISQUALIFIED_INDUSTRIES
+    )

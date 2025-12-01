@@ -1,4 +1,4 @@
-"""Opportunity generation from patterns."""
+"""Opportunity generation from patterns - Solo SaaS Finder v2.0"""
 
 from typing import List, Optional, Dict, Any
 from uuid import UUID
@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 
 
 class OpportunityGenerator:
-    """Generate opportunities from detected patterns."""
+    """Generate SaaS/directory business opportunities from detected patterns."""
 
     def __init__(self):
         settings = get_settings()
@@ -32,7 +32,7 @@ class OpportunityGenerator:
         signals: List[ProcessedSignal]
     ) -> Optional[Opportunity]:
         """
-        Generate an opportunity from a detected pattern.
+        Generate a SaaS/directory opportunity from a detected pattern.
 
         Args:
             pattern: The pattern to analyze
@@ -55,22 +55,25 @@ class OpportunityGenerator:
                 "primary_thesis": pattern.primary_thesis_alignment
             }
 
-            # Format signals
+            # Format signals with new SaaS-focused fields
             formatted_signals = [{
                 "type": s.signal_type,
                 "title": s.title,
                 "summary": s.summary,
+                "problem_summary": getattr(s, 'problem_summary', '') or '',
+                "demand_evidence_level": getattr(s, 'demand_evidence_level', '') or '',
                 "keywords": s.keywords,
                 "entities": s.entities.model_dump() if s.entities else {},
                 "thesis_scores": s.thesis_scores.model_dump() if s.thesis_scores else {},
                 "timing_stage": s.timing_stage,
                 "velocity": s.velocity_score,
-                "novelty": s.novelty_score
-            } for s in signals[:10]]
+                "novelty": s.novelty_score,
+                "is_disqualified": getattr(s, 'is_disqualified', False)
+            } for s in signals[:10] if not getattr(s, 'is_disqualified', False)]
 
             response = await self.client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=3000,
+                max_tokens=4000,
                 messages=[{
                     "role": "user",
                     "content": OPPORTUNITY_GENERATION_PROMPT.format(
@@ -88,26 +91,85 @@ class OpportunityGenerator:
 
             result = json.loads(response_text)
 
-            # Create opportunity
+            # Extract nested fields
+            problem = result.get("problem", {})
+            solution = result.get("solution", {})
+            demand_evidence = result.get("demand_evidence", {})
+            competition = result.get("competition", {})
+            build_assessment = result.get("build_assessment", {})
+            monetisation = result.get("monetisation", {})
+            go_to_market = result.get("go_to_market", {})
+            scoring = result.get("scoring", {})
+
+            # Create opportunity with new SaaS-focused fields
             opportunity_create = OpportunityCreate(
-                title=result.get("title", pattern.title),
-                summary=result.get("summary", ""),
-                detailed_analysis=json.dumps(result.get("detailed_analysis", {})),
+                title=result.get("business_name", pattern.title),
+                business_name=result.get("business_name"),
+                one_liner=result.get("one_liner"),
+                summary=result.get("one_liner"),
+
+                # Problem/Solution
+                problem_description=problem.get("description"),
+                target_customer=problem.get("target_customer"),
+                current_solutions=problem.get("current_solutions"),
+                proposed_solution=solution.get("description"),
+                core_features=solution.get("core_features", []),
+
+                # Demand evidence
+                demand_evidence=json.dumps(demand_evidence.get("signals", [])),
+                demand_strength=demand_evidence.get("strength"),
+
+                # Competition
+                competitors=competition.get("competitors", []),
+                competition_weakness=competition.get("why_beatable"),
+
+                # Build assessment
+                tech_stack_recommendation=build_assessment.get("tech_stack"),
+                build_time_estimate=build_assessment.get("estimated_time"),
+                technical_challenges=build_assessment.get("challenges", []),
+                can_ship_in_4_weeks=build_assessment.get("can_ship_in_4_weeks", True),
+
+                # Monetisation
+                pricing_model=monetisation.get("model"),
+                suggested_price_points=monetisation.get("price_points"),
+                who_pays=monetisation.get("who_pays"),
+
+                # Go-to-market
+                customer_channels=go_to_market.get("customer_channels", []),
+                first_customers_strategy=go_to_market.get("first_10_customers"),
+                seo_potential=go_to_market.get("seo_potential"),
+
+                # Scoring
                 pattern_ids=[pattern.id],
                 signal_ids=list(pattern.signal_ids) if pattern.signal_ids else [],
-                opportunity_type=result.get("opportunity_type", "product"),
-                industries=self._extract_industries(signals),
+                opportunity_type=result.get("opportunity_type", "micro_saas"),
+                industries=result.get("industries", self._extract_industries(signals)),
                 geographies=self._extract_geographies(signals),
-                thesis_scores=result.get("thesis_alignment", {}),
-                primary_thesis=result.get("primary_thesis", pattern.primary_thesis_alignment),
-                execution_fit_reasoning=result.get("execution_fit_reasoning", ""),
-                timing_stage=result.get("timing", {}).get("stage", "emerging"),
-                time_sensitivity=result.get("timing", {}).get("window", ""),
-                existing_players=result.get("competitive_landscape", {}).get("existing_players", []),
-                incumbent_weakness=result.get("competitive_landscape", {}).get("incumbent_weakness", ""),
-                estimated_complexity=self._estimate_complexity(result),
-                key_requirements=result.get("key_requirements", []),
-                potential_moats=result.get("competitive_landscape", {}).get("potential_moats", []),
+                thesis_scores=scoring,
+                overall_score=scoring.get("overall_score"),
+
+                # Verdict
+                verdict=result.get("verdict"),
+                first_steps=result.get("first_steps", []),
+
+                # Legacy fields for compatibility
+                detailed_analysis=json.dumps({
+                    "problem": problem,
+                    "solution": solution,
+                    "demand_evidence": demand_evidence,
+                    "competition": competition,
+                    "build_assessment": build_assessment,
+                    "monetisation": monetisation,
+                    "go_to_market": go_to_market
+                }),
+                primary_thesis=self._determine_primary_thesis(scoring),
+                execution_fit_reasoning=result.get("verdict_reasoning", ""),
+                timing_stage=result.get("timing_stage", "emerging"),
+                existing_players=competition.get("competitors", []),
+                incumbent_weakness=competition.get("why_beatable", ""),
+                estimated_complexity=self._estimate_complexity(build_assessment),
+                key_requirements=build_assessment.get("challenges", []),
+                potential_moats=[solution.get("differentiation", "")] if solution.get("differentiation") else [],
                 risks=result.get("risks", [])
             )
 
@@ -117,7 +179,8 @@ class OpportunityGenerator:
             logger.info(
                 f"Generated opportunity",
                 opportunity_id=str(opportunity.id),
-                title=opportunity.title
+                title=opportunity.title,
+                verdict=result.get("verdict")
             )
 
             return opportunity
@@ -148,18 +211,24 @@ class OpportunityGenerator:
         """
         opportunities = []
 
-        # Filter patterns by score
+        # Filter patterns by score and skip disqualified signals
         high_score_patterns = [
             p for p in patterns
             if p.opportunity_score >= min_score
         ]
 
         for pattern in high_score_patterns:
-            # Get related signals
+            # Get related signals, excluding disqualified ones
             related_signals = [
                 s for s in signals
                 if s.id in (pattern.signal_ids or [])
+                and not getattr(s, 'is_disqualified', False)
             ]
+
+            # Skip if all related signals are disqualified
+            if not related_signals:
+                logger.info(f"Skipping pattern {pattern.id} - all signals disqualified")
+                continue
 
             opportunity = await self.generate_from_pattern(pattern, related_signals)
             if opportunity:
@@ -185,17 +254,32 @@ class OpportunityGenerator:
                 geographies.update(s.entities.locations)
         return list(geographies)[:5]
 
-    def _estimate_complexity(self, result: Dict[str, Any]) -> str:
-        """Estimate complexity based on requirements."""
-        requirements = result.get("key_requirements", [])
-        risks = result.get("risks", [])
+    def _estimate_complexity(self, build_assessment: Dict[str, Any]) -> str:
+        """Estimate complexity based on build assessment."""
+        can_ship = build_assessment.get("can_ship_in_4_weeks", True)
+        challenges = build_assessment.get("challenges", [])
 
-        if len(requirements) <= 2 and len(risks) <= 2:
+        if can_ship and len(challenges) <= 1:
             return "low"
-        elif len(requirements) <= 4 and len(risks) <= 4:
+        elif can_ship and len(challenges) <= 3:
             return "medium"
         else:
             return "high"
+
+    def _determine_primary_thesis(self, scoring: Dict[str, Any]) -> str:
+        """Determine the primary thesis factor based on scores."""
+        factors = [
+            ("demand_evidence", scoring.get("demand_evidence", 0)),
+            ("competition_gap", scoring.get("competition_gap", 0)),
+            ("trend_timing", scoring.get("trend_timing", 0)),
+            ("solo_buildability", scoring.get("solo_buildability", 0)),
+            ("clear_monetisation", scoring.get("clear_monetisation", 0)),
+            ("regulatory_simplicity", scoring.get("regulatory_simplicity", 0)),
+        ]
+
+        # Find the highest scoring factor
+        best_factor = max(factors, key=lambda x: x[1] if x[1] else 0)
+        return best_factor[0]
 
 
 # Singleton

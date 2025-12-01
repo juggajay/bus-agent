@@ -1,4 +1,4 @@
-"""Database query operations."""
+"""Database query operations - Solo SaaS Finder v2.0"""
 
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 
 class Database:
-    """Database operations wrapper."""
+    """Database operations wrapper - Updated for Solo SaaS Finder v2.0"""
 
     def __init__(self):
         settings = get_settings()
@@ -112,9 +112,9 @@ class Database:
             signals.append(RawSignal(**r))
         return signals
 
-    # Processed Signals
+    # Processed Signals - Updated for Solo SaaS Finder v2.0
     def _parse_processed_signal_data(self, data: dict) -> dict:
-        """Parse returned processed signal data from Supabase."""
+        """Parse returned processed signal data from Supabase - Updated for v2.0"""
         # Parse entities JSON string back to dict
         if isinstance(data.get("entities"), str):
             data["entities"] = json.loads(data["entities"])
@@ -123,15 +123,15 @@ class Database:
         if isinstance(data.get("embedding"), str):
             data["embedding"] = json.loads(data["embedding"])
 
-        # Reconstruct thesis_scores from individual columns
+        # Reconstruct thesis_scores from individual columns - NEW v2.0 fields
         thesis_scores = {}
         score_fields = [
-            ("score_ai_leverage", "ai_leverage"),
-            ("score_trust_scarcity", "trust_scarcity"),
-            ("score_physical_digital", "physical_digital"),
-            ("score_incumbent_decay", "incumbent_decay"),
-            ("score_speed_advantage", "speed_advantage"),
-            ("score_execution_fit", "execution_fit"),
+            ("score_demand_evidence", "demand_evidence"),
+            ("score_competition_gap", "competition_gap"),
+            ("score_trend_timing", "trend_timing"),
+            ("score_solo_buildability", "solo_buildability"),
+            ("score_clear_monetisation", "clear_monetisation"),
+            ("score_regulatory_simplicity", "regulatory_simplicity"),
         ]
         for db_field, thesis_field in score_fields:
             if db_field in data:
@@ -141,22 +141,22 @@ class Database:
         return data
 
     async def insert_processed_signal(self, signal: ProcessedSignalCreate, embedding: Optional[List[float]] = None) -> ProcessedSignal:
-        """Insert a processed signal with optional embedding."""
+        """Insert a processed signal with optional embedding - Updated for v2.0"""
         data = signal.model_dump()
 
         # Convert entities to JSON string
         data["entities"] = json.dumps(data["entities"])
         data["raw_signal_id"] = str(data["raw_signal_id"])
 
-        # Map thesis_scores to individual columns
+        # Map thesis_scores to individual columns - NEW v2.0 fields
         thesis_scores = data.pop("thesis_scores", {})
         if thesis_scores:
-            data["score_ai_leverage"] = thesis_scores.get("ai_leverage")
-            data["score_trust_scarcity"] = thesis_scores.get("trust_scarcity")
-            data["score_physical_digital"] = thesis_scores.get("physical_digital")
-            data["score_incumbent_decay"] = thesis_scores.get("incumbent_decay")
-            data["score_speed_advantage"] = thesis_scores.get("speed_advantage")
-            data["score_execution_fit"] = thesis_scores.get("execution_fit")
+            data["score_demand_evidence"] = thesis_scores.get("demand_evidence")
+            data["score_competition_gap"] = thesis_scores.get("competition_gap")
+            data["score_trend_timing"] = thesis_scores.get("trend_timing")
+            data["score_solo_buildability"] = thesis_scores.get("solo_buildability")
+            data["score_clear_monetisation"] = thesis_scores.get("clear_monetisation")
+            data["score_regulatory_simplicity"] = thesis_scores.get("regulatory_simplicity")
 
         if embedding:
             data["embedding"] = embedding
@@ -182,17 +182,17 @@ class Database:
         result = query.order("processed_at", desc=True).execute()
         signals = [ProcessedSignal(**self._parse_processed_signal_data(r)) for r in result.data]
 
-        # Filter by thesis score if specified
+        # Filter by thesis score if specified (using new v2.0 fields)
         if min_thesis_score:
             signals = [
                 s for s in signals
                 if any([
-                    (s.thesis_scores.ai_leverage or 0) >= min_thesis_score,
-                    (s.thesis_scores.trust_scarcity or 0) >= min_thesis_score,
-                    (s.thesis_scores.physical_digital or 0) >= min_thesis_score,
-                    (s.thesis_scores.incumbent_decay or 0) >= min_thesis_score,
-                    (s.thesis_scores.speed_advantage or 0) >= min_thesis_score,
-                    (s.thesis_scores.execution_fit or 0) >= min_thesis_score,
+                    (s.thesis_scores.demand_evidence or 0) >= min_thesis_score,
+                    (s.thesis_scores.competition_gap or 0) >= min_thesis_score,
+                    (s.thesis_scores.trend_timing or 0) >= min_thesis_score,
+                    (s.thesis_scores.solo_buildability or 0) >= min_thesis_score,
+                    (s.thesis_scores.clear_monetisation or 0) >= min_thesis_score,
+                    (s.thesis_scores.regulatory_simplicity or 0) >= min_thesis_score,
                 ])
             ]
 
@@ -284,9 +284,9 @@ class Database:
         ).execute()
         return PatternMatch(**self._parse_pattern_data(result.data[0]))
 
-    # Opportunities
+    # Opportunities - Updated for Solo SaaS Finder v2.0
     def _parse_opportunity_data(self, data: dict) -> dict:
-        """Parse returned opportunity data from Supabase."""
+        """Parse returned opportunity data from Supabase - Updated for v2.0"""
         if isinstance(data.get("pattern_ids"), str):
             data["pattern_ids"] = json.loads(data["pattern_ids"])
         if isinstance(data.get("signal_ids"), str):
@@ -305,6 +305,17 @@ class Database:
             data["potential_moats"] = json.loads(data["potential_moats"])
         if isinstance(data.get("risks"), str):
             data["risks"] = json.loads(data["risks"])
+        # New v2.0 fields
+        if isinstance(data.get("core_features"), str):
+            data["core_features"] = json.loads(data["core_features"])
+        if isinstance(data.get("competitors"), str):
+            data["competitors"] = json.loads(data["competitors"])
+        if isinstance(data.get("technical_challenges"), str):
+            data["technical_challenges"] = json.loads(data["technical_challenges"])
+        if isinstance(data.get("customer_channels"), str):
+            data["customer_channels"] = json.loads(data["customer_channels"])
+        if isinstance(data.get("first_steps"), str):
+            data["first_steps"] = json.loads(data["first_steps"])
         return data
 
     async def insert_opportunity(self, opportunity: OpportunityCreate) -> Opportunity:

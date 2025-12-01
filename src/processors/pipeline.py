@@ -1,8 +1,9 @@
-"""Main processing pipeline for signals."""
+"""Main processing pipeline for signals - Solo SaaS Finder v2.0"""
 
 from typing import List, Optional
 from datetime import datetime
 import asyncio
+import json
 
 from ..database import (
     RawSignal, ProcessedSignalCreate,
@@ -19,7 +20,7 @@ logger = get_logger(__name__)
 
 
 class ProcessingPipeline:
-    """Pipeline for processing raw signals into enriched signals."""
+    """Pipeline for processing raw signals into enriched signals - Updated for Solo SaaS Finder v2.0"""
 
     def __init__(self):
         self.db = get_database()
@@ -29,26 +30,32 @@ class ProcessingPipeline:
         self.velocity_tracker = get_velocity_tracker()
 
     async def process_signal(self, raw_signal: RawSignal) -> Optional[ProcessedSignalCreate]:
-        """Process a single raw signal through all stages."""
+        """Process a single raw signal through all stages with new SaaS-focused scoring."""
         try:
             logger.info(f"Processing signal", signal_id=str(raw_signal.id))
 
-            # Stage 1: Classification
+            # Stage 1: Classification (updated for SaaS focus)
             classification = await self.classifier.classify(raw_signal)
 
-            # Stage 2: Thesis Scoring
+            # Stage 2: Thesis Scoring (new v2.0 scoring)
+            raw_content_str = json.dumps(raw_signal.raw_content)[:5000]
             thesis_result = await self.thesis_scorer.score(
                 signal_type=classification["signal_type"],
                 summary=classification["summary"],
                 entities=classification["entities"].model_dump(),
-                keywords=classification["keywords"]
+                keywords=classification["keywords"],
+                industry=classification.get("industry", ""),
+                problem_summary=classification.get("problem_summary", ""),
+                demand_evidence=classification.get("demand_evidence_level", ""),
+                raw_content=raw_content_str
             )
 
             # Stage 3: Generate Embedding
-            # Combine title, summary, and keywords for embedding
+            # Combine title, summary, problem, and keywords for embedding
             text_for_embedding = " ".join([
                 classification.get("title", ""),
                 classification.get("summary", ""),
+                classification.get("problem_summary", ""),
                 " ".join(classification.get("keywords", []))
             ])
             embedding = await self.embedding_generator.generate(text_for_embedding)
@@ -68,17 +75,20 @@ class ProcessingPipeline:
             ]
             velocity_score = sum(velocities) / len(velocities) if velocities else 0.0
 
-            # Create processed signal
+            # Create processed signal with new v2.0 fields
             processed = ProcessedSignalCreate(
                 raw_signal_id=raw_signal.id,
                 signal_type=classification["signal_type"],
                 signal_subtype=classification["signal_subtype"],
                 title=classification["title"],
                 summary=classification["summary"],
+                # New v2.0 fields
+                problem_summary=classification.get("problem_summary", ""),
+                demand_evidence_level=classification.get("demand_evidence_level", ""),
                 entities=classification["entities"],
                 keywords=classification["keywords"],
                 thesis_scores=thesis_result["scores"],
-                thesis_reasoning=thesis_result["reasoning"],
+                thesis_reasoning=thesis_result.get("reasoning", ""),
                 novelty_score=novelty_score,
                 velocity_score=velocity_score,
                 geography=raw_signal.geography,
@@ -86,7 +96,10 @@ class ProcessingPipeline:
                     thesis_result["scores"],
                     velocity_score,
                     novelty_score
-                )
+                ),
+                # Disqualification tracking
+                is_disqualified=thesis_result.get("is_disqualified", False),
+                disqualification_reason=thesis_result.get("disqualification_reason")
             )
 
             # Store with embedding
@@ -97,7 +110,8 @@ class ProcessingPipeline:
                 signal_id=str(raw_signal.id),
                 signal_type=classification["signal_type"],
                 novelty=novelty_score,
-                velocity=velocity_score
+                velocity=velocity_score,
+                disqualified=thesis_result.get("is_disqualified", False)
             )
 
             return processed
@@ -113,14 +127,20 @@ class ProcessingPipeline:
     async def process_batch(self, raw_signals: List[RawSignal]) -> List[ProcessedSignalCreate]:
         """Process multiple signals."""
         results = []
+        disqualified_count = 0
 
         for signal in raw_signals:
             result = await self.process_signal(signal)
             if result:
                 results.append(result)
+                if getattr(result, 'is_disqualified', False):
+                    disqualified_count += 1
 
             # Small delay between signals to avoid rate limits
             await asyncio.sleep(0.5)
+
+        if disqualified_count > 0:
+            logger.info(f"Batch processing: {disqualified_count}/{len(results)} signals disqualified")
 
         return results
 
@@ -146,12 +166,15 @@ class ProcessingPipeline:
         velocity_score: float,
         novelty_score: float
     ) -> str:
-        """Infer timing stage from signal characteristics."""
-        # High novelty + low velocity = Early
-        # High novelty + high velocity = Emerging
-        # Low novelty + high velocity = Growing
-        # Low novelty + low velocity = Crowded or past peak
+        """
+        Infer timing stage from signal characteristics.
 
+        Updated for Solo SaaS Finder v2.0:
+        - High novelty + low velocity = Early (too nascent)
+        - High novelty + high velocity = Emerging (sweet spot for building)
+        - Low novelty + high velocity = Growing (still viable, more competition)
+        - Low novelty + low velocity = Crowded or past peak (avoid)
+        """
         if novelty_score > 0.7:
             if velocity_score > 0.5:
                 return "emerging"

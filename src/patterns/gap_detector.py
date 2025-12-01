@@ -179,8 +179,8 @@ class GapDetector:
             # Aggregate thesis scores from complaints
             thesis_scores = self._aggregate_thesis_scores(complaints)
 
-            # Gaps in physical-digital space often score higher
-            if thesis_scores.get("physical_digital"):
+            # Gaps with high demand evidence score higher
+            if thesis_scores.get("demand_evidence") and thesis_scores["demand_evidence"] >= 7:
                 opportunity_score *= 1.2
 
             primary_thesis = max(thesis_scores.items(), key=lambda x: x[1] or 0)[0]
@@ -206,30 +206,30 @@ class GapDetector:
             return None
 
     def _aggregate_thesis_scores(self, signals: List[ProcessedSignal]) -> Dict[str, float]:
-        """Aggregate thesis scores across signals."""
+        """Aggregate thesis scores across signals - Solo SaaS Finder v2.0."""
         scores = {
-            "ai_leverage": [],
-            "trust_scarcity": [],
-            "physical_digital": [],
-            "incumbent_decay": [],
-            "speed_advantage": [],
-            "execution_fit": []
+            "demand_evidence": [],
+            "competition_gap": [],
+            "trend_timing": [],
+            "solo_buildability": [],
+            "clear_monetisation": [],
+            "regulatory_simplicity": []
         }
 
         for s in signals:
             if s.thesis_scores:
-                if s.thesis_scores.ai_leverage:
-                    scores["ai_leverage"].append(s.thesis_scores.ai_leverage)
-                if s.thesis_scores.trust_scarcity:
-                    scores["trust_scarcity"].append(s.thesis_scores.trust_scarcity)
-                if s.thesis_scores.physical_digital:
-                    scores["physical_digital"].append(s.thesis_scores.physical_digital)
-                if s.thesis_scores.incumbent_decay:
-                    scores["incumbent_decay"].append(s.thesis_scores.incumbent_decay)
-                if s.thesis_scores.speed_advantage:
-                    scores["speed_advantage"].append(s.thesis_scores.speed_advantage)
-                if s.thesis_scores.execution_fit:
-                    scores["execution_fit"].append(s.thesis_scores.execution_fit)
+                if s.thesis_scores.demand_evidence:
+                    scores["demand_evidence"].append(s.thesis_scores.demand_evidence)
+                if s.thesis_scores.competition_gap:
+                    scores["competition_gap"].append(s.thesis_scores.competition_gap)
+                if s.thesis_scores.trend_timing:
+                    scores["trend_timing"].append(s.thesis_scores.trend_timing)
+                if s.thesis_scores.solo_buildability:
+                    scores["solo_buildability"].append(s.thesis_scores.solo_buildability)
+                if s.thesis_scores.clear_monetisation:
+                    scores["clear_monetisation"].append(s.thesis_scores.clear_monetisation)
+                if s.thesis_scores.regulatory_simplicity:
+                    scores["regulatory_simplicity"].append(s.thesis_scores.regulatory_simplicity)
 
         return {
             k: sum(v) / len(v) if v else None

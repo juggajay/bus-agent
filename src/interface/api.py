@@ -335,10 +335,20 @@ async def run_opportunity_generation(min_score: float = Query(default=0.5, ge=0,
     generator = get_opportunity_generator()
 
     patterns = await db.get_patterns(status="new", min_score=min_score)
-    signals = await db.get_processed_signals(days=30)
+    signals = await db.get_processed_signals(days=90)  # Extended to 90 days to match pattern detection
+
+    # Debug info
+    debug_info = {
+        "patterns_count": len(patterns),
+        "signals_count": len(signals),
+        "high_score_patterns": len([p for p in patterns if p.opportunity_score >= min_score])
+    }
 
     opportunities = await generator.generate_from_patterns(patterns, signals, min_score)
-    return {"opportunities_generated": len(opportunities)}
+    return {
+        "opportunities_generated": len(opportunities),
+        "debug": debug_info
+    }
 
 
 @app.post("/pipeline/full")

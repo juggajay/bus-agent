@@ -217,22 +217,41 @@ class OpportunityGenerator:
             if p.opportunity_score >= min_score
         ]
 
-        for pattern in high_score_patterns:
+        logger.info(f"Processing {len(high_score_patterns)} high-score patterns from {len(patterns)} total")
+
+        # Build a set of signal IDs for faster lookup
+        signal_map = {s.id: s for s in signals}
+        logger.info(f"Built signal map with {len(signal_map)} signals")
+
+        # Debug: Check types
+        if signals and high_score_patterns:
+            sample_signal_id = signals[0].id
+            sample_pattern_signal_id = high_score_patterns[0].signal_ids[0] if high_score_patterns[0].signal_ids else None
+            logger.info(f"Type of signal.id: {type(sample_signal_id)}")
+            logger.info(f"Type of pattern.signal_ids[0]: {type(sample_pattern_signal_id)}")
+            if sample_pattern_signal_id:
+                logger.info(f"Sample match check: {sample_pattern_signal_id in signal_map}")
+
+        for i, pattern in enumerate(high_score_patterns):
             # Get related signals, excluding disqualified ones
             related_signals = [
-                s for s in signals
-                if s.id in (pattern.signal_ids or [])
-                and not getattr(s, 'is_disqualified', False)
+                signal_map[sid] for sid in (pattern.signal_ids or [])
+                if sid in signal_map and not getattr(signal_map[sid], 'is_disqualified', False)
             ]
+
+            logger.info(f"Pattern {i+1}/{len(high_score_patterns)}: {len(related_signals)} related signals from {len(pattern.signal_ids or [])} signal_ids")
 
             # Skip if all related signals are disqualified
             if not related_signals:
-                logger.info(f"Skipping pattern {pattern.id} - all signals disqualified")
+                logger.info(f"Skipping pattern {pattern.id} - all signals disqualified or not found")
                 continue
 
             opportunity = await self.generate_from_pattern(pattern, related_signals)
             if opportunity:
                 opportunities.append(opportunity)
+                logger.info(f"Generated opportunity: {opportunity.title}")
+            else:
+                logger.warning(f"Failed to generate opportunity for pattern {pattern.id}")
 
         return opportunities
 

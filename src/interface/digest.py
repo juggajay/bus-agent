@@ -24,82 +24,144 @@ class DigestGenerator:
 
     async def generate_weekly_digest(self) -> DigestContent:
         """Generate a weekly digest."""
-        # Get data from last 7 days
-        signals = await self.db.get_processed_signals(days=7)
-        patterns = await self.db.get_patterns(status="new")
-        opportunities = await self.db.get_opportunities(status="new")
+        try:
+            # Get data from last 7 days
+            signals = await self.db.get_processed_signals(days=7)
+            patterns = await self.db.get_patterns(status="new")
+            opportunities = await self.db.get_opportunities(status="new")
 
-        # Filter to last 7 days
-        cutoff = datetime.utcnow() - timedelta(days=7)
-        patterns = [p for p in patterns if p.created_at >= cutoff]
-        opportunities = [o for o in opportunities if o.created_at >= cutoff]
+            # Filter to last 7 days - handle both datetime and string types
+            cutoff = datetime.utcnow() - timedelta(days=7)
 
-        # Generate digest content
-        digest_data = await self.synthesizer.generate_digest(
-            period="weekly",
-            signals=signals,
-            patterns=patterns,
-            opportunities=opportunities
-        )
+            def parse_datetime(dt):
+                if isinstance(dt, datetime):
+                    return dt
+                if isinstance(dt, str):
+                    try:
+                        return datetime.fromisoformat(dt.replace('Z', '+00:00').replace('+00:00', ''))
+                    except:
+                        return datetime.utcnow()
+                return datetime.utcnow()
 
-        # Get velocity spikes
-        velocity_spikes = [{
-            "topic": s.keywords[0] if s.keywords else "unknown",
-            "velocity": s.velocity_score,
-            "signal_type": s.signal_type
-        } for s in signals if s.velocity_score and s.velocity_score > 0.7]
+            patterns = [p for p in patterns if parse_datetime(p.created_at) >= cutoff]
+            opportunities = [o for o in opportunities if parse_datetime(o.created_at) >= cutoff]
 
-        return DigestContent(
-            period="weekly",
-            generated_at=datetime.utcnow(),
-            signals_processed=len(signals),
-            patterns_detected=len(patterns),
-            opportunities_identified=len(opportunities),
-            top_patterns=digest_data.get("pattern_summaries", [])[:5],
-            new_opportunities=digest_data.get("opportunity_summaries", [])[:5],
-            velocity_spikes=velocity_spikes[:5],
-            key_insight=digest_data.get("key_insight", "No key insight generated"),
-            recommended_actions=digest_data.get("recommended_actions", [])[:3]
-        )
+            # Generate digest content
+            digest_data = await self.synthesizer.generate_digest(
+                period="weekly",
+                signals=signals,
+                patterns=patterns,
+                opportunities=opportunities
+            )
+
+            # Get velocity spikes
+            velocity_spikes = [{
+                "topic": s.keywords[0] if s.keywords else "unknown",
+                "velocity": s.velocity_score,
+                "signal_type": s.signal_type
+            } for s in signals if s.velocity_score and s.velocity_score > 0.7]
+
+            return DigestContent(
+                period="weekly",
+                generated_at=datetime.utcnow(),
+                signals_processed=len(signals),
+                patterns_detected=len(patterns),
+                opportunities_identified=len(opportunities),
+                top_patterns=digest_data.get("pattern_summaries", [])[:5],
+                new_opportunities=digest_data.get("opportunity_summaries", [])[:5],
+                velocity_spikes=velocity_spikes[:5],
+                key_insight=digest_data.get("key_insight", "No key insight generated"),
+                recommended_actions=digest_data.get("recommended_actions", [])[:3],
+                top_build_ready_ideas=digest_data.get("top_build_ready_ideas", [])[:5],
+                emerging_trends=digest_data.get("emerging_trends", [])[:5],
+                pass_list=digest_data.get("pass_list", [])[:5],
+                this_week_action=digest_data.get("this_week_action")
+            )
+        except Exception as e:
+            logger.error(f"Failed to generate weekly digest: {str(e)}")
+            # Return a minimal digest on error
+            return DigestContent(
+                period="weekly",
+                generated_at=datetime.utcnow(),
+                signals_processed=0,
+                patterns_detected=0,
+                opportunities_identified=0,
+                top_patterns=[],
+                new_opportunities=[],
+                velocity_spikes=[],
+                key_insight=f"Digest generation failed: {str(e)}",
+                recommended_actions=["Check logs for errors"]
+            )
 
     async def generate_monthly_digest(self) -> DigestContent:
         """Generate a monthly digest."""
-        # Get data from last 30 days
-        signals = await self.db.get_processed_signals(days=30)
-        patterns = await self.db.get_patterns()
-        opportunities = await self.db.get_opportunities()
+        try:
+            # Get data from last 30 days
+            signals = await self.db.get_processed_signals(days=30)
+            patterns = await self.db.get_patterns()
+            opportunities = await self.db.get_opportunities()
 
-        # Filter to last 30 days
-        cutoff = datetime.utcnow() - timedelta(days=30)
-        patterns = [p for p in patterns if p.created_at >= cutoff]
-        opportunities = [o for o in opportunities if o.created_at >= cutoff]
+            # Filter to last 30 days - handle both datetime and string types
+            cutoff = datetime.utcnow() - timedelta(days=30)
 
-        # Generate digest content
-        digest_data = await self.synthesizer.generate_digest(
-            period="monthly",
-            signals=signals,
-            patterns=patterns,
-            opportunities=opportunities
-        )
+            def parse_datetime(dt):
+                if isinstance(dt, datetime):
+                    return dt
+                if isinstance(dt, str):
+                    try:
+                        return datetime.fromisoformat(dt.replace('Z', '+00:00').replace('+00:00', ''))
+                    except:
+                        return datetime.utcnow()
+                return datetime.utcnow()
 
-        velocity_spikes = [{
-            "topic": s.keywords[0] if s.keywords else "unknown",
-            "velocity": s.velocity_score,
-            "signal_type": s.signal_type
-        } for s in signals if s.velocity_score and s.velocity_score > 0.7]
+            patterns = [p for p in patterns if parse_datetime(p.created_at) >= cutoff]
+            opportunities = [o for o in opportunities if parse_datetime(o.created_at) >= cutoff]
 
-        return DigestContent(
-            period="monthly",
-            generated_at=datetime.utcnow(),
-            signals_processed=len(signals),
-            patterns_detected=len(patterns),
-            opportunities_identified=len(opportunities),
-            top_patterns=digest_data.get("pattern_summaries", [])[:5],
-            new_opportunities=digest_data.get("opportunity_summaries", [])[:5],
-            velocity_spikes=velocity_spikes[:5],
-            key_insight=digest_data.get("key_insight", "No key insight generated"),
-            recommended_actions=digest_data.get("recommended_actions", [])[:3]
-        )
+            # Generate digest content
+            digest_data = await self.synthesizer.generate_digest(
+                period="monthly",
+                signals=signals,
+                patterns=patterns,
+                opportunities=opportunities
+            )
+
+            velocity_spikes = [{
+                "topic": s.keywords[0] if s.keywords else "unknown",
+                "velocity": s.velocity_score,
+                "signal_type": s.signal_type
+            } for s in signals if s.velocity_score and s.velocity_score > 0.7]
+
+            return DigestContent(
+                period="monthly",
+                generated_at=datetime.utcnow(),
+                signals_processed=len(signals),
+                patterns_detected=len(patterns),
+                opportunities_identified=len(opportunities),
+                top_patterns=digest_data.get("pattern_summaries", [])[:5],
+                new_opportunities=digest_data.get("opportunity_summaries", [])[:5],
+                velocity_spikes=velocity_spikes[:5],
+                key_insight=digest_data.get("key_insight", "No key insight generated"),
+                recommended_actions=digest_data.get("recommended_actions", [])[:3],
+                top_build_ready_ideas=digest_data.get("top_build_ready_ideas", [])[:5],
+                emerging_trends=digest_data.get("emerging_trends", [])[:5],
+                pass_list=digest_data.get("pass_list", [])[:5],
+                this_week_action=digest_data.get("this_week_action")
+            )
+        except Exception as e:
+            logger.error(f"Failed to generate monthly digest: {str(e)}")
+            # Return a minimal digest on error
+            return DigestContent(
+                period="monthly",
+                generated_at=datetime.utcnow(),
+                signals_processed=0,
+                patterns_detected=0,
+                opportunities_identified=0,
+                top_patterns=[],
+                new_opportunities=[],
+                velocity_spikes=[],
+                key_insight=f"Digest generation failed: {str(e)}",
+                recommended_actions=["Check logs for errors"]
+            )
 
     def format_digest_email(self, digest: DigestContent) -> Dict[str, str]:
         """Format digest as email content."""
